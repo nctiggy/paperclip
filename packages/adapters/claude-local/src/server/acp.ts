@@ -417,10 +417,10 @@ export function createClaudeAcpExecutor(options: ClaudeAcpExecutorOptions = {}):
         ctx.config,
         target?.kind === "remote" ? {} : process.env,
         (droppedModel, requestedEffort) => {
-          void ctx.onLog(
+          ctx.onLog(
             "stderr",
             `[paperclip] Model ${droppedModel || "(provider default)"} does not accept a reasoning effort; omitting configured effort "${requestedEffort}".\n`,
-          );
+          ).catch(() => {});
         },
       ),
     });

@@ -62,7 +62,7 @@ export function filterUnsupportedClaudeEffortArgs(
   let droppedEffort: string | null = null;
   for (let i = 0; i < extraArgs.length; i += 1) {
     const arg = extraArgs[i];
-    if (arg === "--effort" && i + 1 < extraArgs.length) {
+    if (arg === "--effort" && i + 1 < extraArgs.length && !extraArgs[i + 1].startsWith("-")) {
       const value = extraArgs[i + 1];
       if (!supported.includes(value)) {
         droppedEffort = value;

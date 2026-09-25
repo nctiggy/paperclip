@@ -970,6 +970,7 @@ export function NewIssueDialog() {
     assigneeAdapterType,
     effectiveAssigneeModel,
     assigneeThinkingEffort,
+    assigneePrimaryEnv,
   ]);
 
   // Cleanup timer on unmount
