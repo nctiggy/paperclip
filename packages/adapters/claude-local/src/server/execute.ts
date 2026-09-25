@@ -92,7 +92,12 @@ import { resolveClaudeDesiredSkillNames } from "./skills.js";
 import { isBedrockModelId } from "./models.js";
 import { prepareClaudePromptBundle } from "./prompt-cache.js";
 import { buildClaudeExecutionPermissionArgs, claudeSandboxPermissionEnv } from "./permissions.js";
-import { resolveClaudeModel, resolveClaudeReasoningEffort, SANDBOX_INSTALL_COMMAND } from "../index.js";
+import {
+  filterUnsupportedClaudeEffortArgs,
+  resolveClaudeModel,
+  resolveClaudeReasoningEffort,
+  SANDBOX_INSTALL_COMMAND,
+} from "../index.js";
 import {
   createClaudeAcpExecutor,
   resolveClaudeExecutionEngineForRun,
@@ -473,7 +478,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     loggedEnv: initialLoggedEnv,
     timeoutSec,
     graceSec,
-    extraArgs,
+    extraArgs: rawExtraArgs,
   } = runtimeConfig;
   Object.assign(env, claudeSandboxPermissionEnv({ dangerouslySkipPermissions, targetIsSandbox: executionTargetIsSandbox }));
   let loggedEnv = initialLoggedEnv;
@@ -743,6 +748,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     await onLog(
       "stderr",
       `[paperclip] Model ${model || "(provider default)"} does not accept a reasoning effort; omitting configured effort "${effort}".\n`,
+    );
+  }
+  const { args: extraArgs, droppedEffort: droppedExtraArgsEffort } =
+    filterUnsupportedClaudeEffortArgs(model, rawExtraArgs);
+  if (droppedExtraArgsEffort) {
+    await onLog(
+      "stderr",
+      `[paperclip] Model ${model || "(provider default)"} does not accept a reasoning effort; omitting "--effort ${droppedExtraArgsEffort}" from extraArgs.\n`,
     );
   }
   if (executionTargetIsSandbox && effectiveEffort) {

@@ -609,6 +609,10 @@ export function NewIssueDialog() {
     ? selectedAssigneeAgent.adapterConfig.model
     : "";
   const effectiveAssigneeModel = assigneeModelOverride || assigneePrimaryModel;
+  const assigneePrimaryEnv = isRecord(selectedAssigneeAgent?.adapterConfig)
+    && isRecord(selectedAssigneeAgent.adapterConfig.env)
+    ? (selectedAssigneeAgent.adapterConfig.env as Record<string, EnvBinding>)
+    : null;
   const supportsAssigneeOverrides = Boolean(
     assigneeAdapterType && ISSUE_OVERRIDE_ADAPTER_TYPES.has(assigneeAdapterType),
   );
@@ -957,7 +961,7 @@ export function NewIssueDialog() {
         ? codexReasoningEffortOptions(effectiveAssigneeModel)
         : assigneeAdapterType === "opencode_local"
           ? ISSUE_THINKING_EFFORT_OPTIONS.opencode_local
-          : claudeReasoningEffortOptions(effectiveAssigneeModel);
+          : claudeReasoningEffortOptions(effectiveAssigneeModel, undefined, assigneePrimaryEnv);
     if (!validThinkingValues.some((option) => option.value === assigneeThinkingEffort)) {
       setAssigneeThinkingEffort("");
     }
@@ -1222,7 +1226,7 @@ export function NewIssueDialog() {
       ? codexReasoningEffortOptions(effectiveAssigneeModel)
       : assigneeAdapterType === "opencode_local"
         ? ISSUE_THINKING_EFFORT_OPTIONS.opencode_local
-      : claudeReasoningEffortOptions(effectiveAssigneeModel);
+      : claudeReasoningEffortOptions(effectiveAssigneeModel, undefined, assigneePrimaryEnv);
   const recentAssigneeIds = useMemo(() => getRecentAssigneeIds(), [newIssueOpen]);
   const recentAssigneeOptionIds = useMemo(
     () => recentAssigneeIds.map((id) => assigneeValueFromSelection({ assigneeAgentId: id })),

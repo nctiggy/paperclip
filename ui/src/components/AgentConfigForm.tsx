@@ -1250,6 +1250,9 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
     ? val!.model ?? ""
     : eff("adapterConfig", "model", String(config.model ?? ""));
   const currentModelId = typeof currentModelValue === "string" ? currentModelValue : "";
+  const currentEnvBindings = isCreate
+    ? ((val!.envBindings ?? EMPTY_ENV) as Record<string, EnvBinding>)
+    : (eff("adapterConfig", "env", (config.env ?? EMPTY_ENV) as Record<string, EnvBinding>));
 
   async function handleRefreshModels() {
     if (!selectedCompanyId) return;
@@ -1289,7 +1292,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
             : adapterType === "pi_local"
               ? [{ id: "", label: "Auto" }, ...["off", "minimal", "low", "medium", "high", "xhigh"].map(id => ({ id, label: id }))]
               : adapterType === "claude_local"
-                ? claudeReasoningEffortOptions(currentModelId, "Auto").map((option) => ({
+                ? claudeReasoningEffortOptions(currentModelId, "Auto", currentEnvBindings).map((option) => ({
                     id: option.value,
                     label: option.label,
                   }))

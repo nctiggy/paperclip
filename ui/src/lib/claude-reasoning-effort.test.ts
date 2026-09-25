@@ -24,4 +24,17 @@ describe("Claude reasoning effort options", () => {
     expect(claudeReasoningEffortOptions(null).map((option) => option.label))
       .toEqual(["Default", "Low", "Medium", "High", "X-High", "Max"]);
   });
+
+  it("falls back to ANTHROPIC_MODEL from env when the stored model is blank", () => {
+    expect(claudeReasoningEffortOptions("", "Default", { ANTHROPIC_MODEL: "claude-haiku-4-5" }))
+      .toEqual([{ value: "", label: "Default" }]);
+    expect(claudeReasoningEffortOptions("", "Default", { ANTHROPIC_MODEL: { type: "plain", value: "claude-sonnet-4-6" } }))
+      .toEqual(claudeReasoningEffortOptions("claude-sonnet-4-6"));
+    // A stored model wins over an env override.
+    expect(claudeReasoningEffortOptions("claude-opus-5", "Default", { ANTHROPIC_MODEL: "claude-haiku-4-5" }))
+      .toEqual(claudeReasoningEffortOptions("claude-opus-5"));
+    // Secret-ref env bindings are opaque client-side; the default model applies.
+    expect(claudeReasoningEffortOptions("", "Default", { ANTHROPIC_MODEL: { type: "secret_ref", secretId: "s1" } }))
+      .toEqual(claudeReasoningEffortOptions("claude-opus-5"));
+  });
 });

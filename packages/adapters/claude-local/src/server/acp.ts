@@ -127,6 +127,13 @@ const ACP_EFFORT_KEYS = ["modelReasoningEffort", "reasoningEffort", "thinkingEff
 export function buildClaudeAcpConfig(
   config: Record<string, unknown>,
   inheritedEnv: Record<string, unknown> = {},
+  /**
+   * Notified whenever a requested effort is dropped because the resolved
+   * model doesn't accept it, mirroring the CLI lane's stderr log so operators
+   * can see why their setting was ignored instead of the ACP lane silently
+   * stripping it.
+   */
+  droppedEffortSink?: (model: string, requestedEffort: string, resolvedEffort: string) => void,
 ): Record<string, unknown> {
   const env = parseObject(config.env);
   const model = resolveClaudeModel(config.model, { ...inheritedEnv, ...env });
@@ -136,6 +143,7 @@ export function buildClaudeAcpConfig(
   // value here, and drop it entirely when the model has no effort tier.
   const requestedEffort = firstNonEmptyString(...ACP_EFFORT_KEYS.map((key) => config[key])) ?? "";
   const effort = resolveClaudeReasoningEffort(model, requestedEffort);
+  if (requestedEffort && !effort) droppedEffortSink?.(model, requestedEffort, effort);
   const withoutEffortAliases = { ...config };
   for (const key of ACP_EFFORT_KEYS) delete withoutEffortAliases[key];
   const agentCommand = firstNonEmptyString(config.agentCommand, config.acpAgentCommand);
@@ -405,7 +413,16 @@ export function createClaudeAcpExecutor(options: ClaudeAcpExecutorOptions = {}):
     });
     const result = await currentExecutor({
       ...ctx,
-      config: buildClaudeAcpConfig(ctx.config, target?.kind === "remote" ? {} : process.env),
+      config: buildClaudeAcpConfig(
+        ctx.config,
+        target?.kind === "remote" ? {} : process.env,
+        (droppedModel, requestedEffort) => {
+          void ctx.onLog(
+            "stderr",
+            `[paperclip] Model ${droppedModel || "(provider default)"} does not accept a reasoning effort; omitting configured effort "${requestedEffort}".\n`,
+          );
+        },
+      ),
     });
     return mapClaudeAcpAuthErrorCode(result);
   };

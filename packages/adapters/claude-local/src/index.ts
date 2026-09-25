@@ -45,6 +45,43 @@ export function resolveClaudeReasoningEffort(model: string, effort: unknown): st
   if (!requested) return "";
   return claudeLocalReasoningEffortsForModel(model).includes(requested) ? requested : "";
 }
+
+/**
+ * Strip a `--effort <value>` (or `--effort=value`) pair out of raw CLI
+ * extraArgs when the resolved model doesn't accept it. `config.effort` isn't
+ * the only way an unsupported effort can reach the CLI — an operator can also
+ * smuggle one in via `extraArgs`/`args`, which otherwise bypasses
+ * resolveClaudeReasoningEffort entirely and lets the run fail downstream.
+ */
+export function filterUnsupportedClaudeEffortArgs(
+  model: string,
+  extraArgs: readonly string[],
+): { args: string[]; droppedEffort: string | null } {
+  const supported = claudeLocalReasoningEffortsForModel(model);
+  const args: string[] = [];
+  let droppedEffort: string | null = null;
+  for (let i = 0; i < extraArgs.length; i += 1) {
+    const arg = extraArgs[i];
+    if (arg === "--effort" && i + 1 < extraArgs.length) {
+      const value = extraArgs[i + 1];
+      if (!supported.includes(value)) {
+        droppedEffort = value;
+        i += 1;
+        continue;
+      }
+    }
+    const inlineMatch = /^--effort=(.*)$/.exec(arg);
+    if (inlineMatch) {
+      const value = inlineMatch[1];
+      if (!supported.includes(value)) {
+        droppedEffort = value;
+        continue;
+      }
+    }
+    args.push(arg);
+  }
+  return { args, droppedEffort };
+}
 export const label = "Claude Code";
 
 export const SANDBOX_INSTALL_COMMAND = "npm install -g @anthropic-ai/claude-code";
