@@ -92,7 +92,7 @@ import { resolveClaudeDesiredSkillNames } from "./skills.js";
 import { isBedrockModelId } from "./models.js";
 import { prepareClaudePromptBundle } from "./prompt-cache.js";
 import { buildClaudeExecutionPermissionArgs, claudeSandboxPermissionEnv } from "./permissions.js";
-import { resolveClaudeModel, SANDBOX_INSTALL_COMMAND } from "../index.js";
+import { resolveClaudeModel, resolveClaudeReasoningEffort, SANDBOX_INSTALL_COMMAND } from "../index.js";
 import {
   createClaudeAcpExecutor,
   resolveClaudeExecutionEngineForRun,
@@ -738,8 +738,14 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       }
     }
   }
-  let effectiveEffort = effort;
-  if (executionTargetIsSandbox && effort) {
+  let effectiveEffort = resolveClaudeReasoningEffort(model, effort);
+  if (effort && !effectiveEffort) {
+    await onLog(
+      "stderr",
+      `[paperclip] Model ${model || "(provider default)"} does not accept a reasoning effort; omitting configured effort "${effort}".\n`,
+    );
+  }
+  if (executionTargetIsSandbox && effectiveEffort) {
     const supportsEffort = await claudeCommandSupportsEffortFlag({
       runId,
       command,

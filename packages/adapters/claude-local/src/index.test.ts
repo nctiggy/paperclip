@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { claudeLocalReasoningEffortsForModel, DEFAULT_CLAUDE_LOCAL_MODEL, resolveClaudeModel } from "./index.js";
+import {
+  claudeLocalReasoningEffortsForModel,
+  DEFAULT_CLAUDE_LOCAL_MODEL,
+  resolveClaudeModel,
+  resolveClaudeReasoningEffort,
+} from "./index.js";
 import { minimumClaudeCliVersionForModel } from "./server/cli-capabilities.js";
 
 describe("Claude model defaults", () => {
@@ -14,6 +19,16 @@ describe("Claude model defaults", () => {
     expect(claudeLocalReasoningEffortsForModel("claude-sonnet-4-6")).toEqual(["low", "medium", "high", "max"]);
     expect(claudeLocalReasoningEffortsForModel("claude-haiku-4-5")).toEqual([]);
     expect(claudeLocalReasoningEffortsForModel("custom-model")).toEqual(["low", "medium", "high"]);
+  });
+
+  it("keeps only the efforts the resolved model accepts", () => {
+    expect(resolveClaudeReasoningEffort("claude-opus-5", "max")).toBe("max");
+    expect(resolveClaudeReasoningEffort("claude-opus-5", " xhigh ")).toBe("xhigh");
+    expect(resolveClaudeReasoningEffort("claude-sonnet-4-6", "xhigh")).toBe("");
+    expect(resolveClaudeReasoningEffort("us.anthropic.claude-haiku-4-5-20251001-v1:0", "high")).toBe("");
+    expect(resolveClaudeReasoningEffort("claude-haiku-4-5", "high")).toBe("");
+    expect(resolveClaudeReasoningEffort("claude-opus-5", "")).toBe("");
+    expect(resolveClaudeReasoningEffort("claude-opus-5", undefined)).toBe("");
   });
 
   it.each([undefined, null, "", "  "])("uses Opus 5 for an unset model (%j)", (model) => {

@@ -294,6 +294,18 @@ describe("claude_local ACP lane", () => {
     });
   });
 
+  it("drops a reasoning effort the resolved model does not accept", () => {
+    // Haiku exposes no effort tier, so setting the ACP effort option fails the run.
+    expect(buildClaudeAcpConfig({ model: "claude-haiku-4-5", effort: "high" }).effort).toBeUndefined();
+    // The aliases the shared engine reads collapse onto one supported value.
+    expect(buildClaudeAcpConfig({ model: "claude-opus-5", thinkingEffort: "max" }))
+      .toMatchObject({ effort: "max" });
+    expect(buildClaudeAcpConfig({ model: "claude-opus-5-5", modelReasoningEffort: "xhigh" }))
+      .toMatchObject({ effort: "xhigh" });
+    expect(buildClaudeAcpConfig({ model: "claude-sonnet-4-6", reasoningEffort: "xhigh" }).effort)
+      .toBeUndefined();
+  });
+
   it("checks the Node version required by the Claude ACP runtime", () => {
     setNodeVersion("v24.10.0");
     expect(nodeVersionMeetsClaudeAcpMinimum()).toBe(false);

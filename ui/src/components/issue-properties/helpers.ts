@@ -3,6 +3,7 @@ import type { Issue, Project } from "@paperclipai/shared";
 import { extractProviderIdWithFallback } from "../../lib/model-utils";
 import type { IssueModelLane } from "../../lib/issue-assignee-overrides";
 import { codexReasoningEffortOptions } from "../../lib/codex-reasoning-effort";
+import { claudeReasoningEffortOptions } from "../../lib/claude-reasoning-effort";
 
 export function defaultProjectWorkspaceIdForProject(project: {
   workspaces?: Array<{ id: string; isPrimary: boolean }>;
@@ -54,12 +55,6 @@ export function toDateTimeLocalValue(value: string | null | undefined) {
 }
 
 export const ISSUE_THINKING_EFFORT_OPTIONS = {
-  claude_local: [
-    { value: "", label: "Default" },
-    { value: "low", label: "Low" },
-    { value: "medium", label: "Medium" },
-    { value: "high", label: "High" },
-  ],
   opencode_local: [
     { value: "", label: "Default" },
     { value: "minimal", label: "Minimal" },
@@ -89,7 +84,7 @@ export function thinkingEffortOptionsFor(
 ) {
   if (adapterType === "codex_local") return codexReasoningEffortOptions(model);
   if (adapterType === "opencode_local") return ISSUE_THINKING_EFFORT_OPTIONS.opencode_local;
-  return ISSUE_THINKING_EFFORT_OPTIONS.claude_local;
+  return claudeReasoningEffortOptions(model);
 }
 
 export function thinkingEffortKeyFor(adapterType: string | null | undefined) {

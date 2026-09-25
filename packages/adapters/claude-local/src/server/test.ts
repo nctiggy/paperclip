@@ -34,7 +34,7 @@ import {
 import { isBedrockModelId } from "./models.js";
 import { buildClaudeProbePermissionArgs, claudeSandboxPermissionEnv } from "./permissions.js";
 import { prepareSandboxClaudeProbeRuntime } from "./claude-config.js";
-import { resolveClaudeModel, SANDBOX_INSTALL_COMMAND } from "../index.js";
+import { resolveClaudeModel, resolveClaudeReasoningEffort, SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { resolveClaudeExecutionEngineForRun, testClaudeAcpEnvironment } from "./acp.js";
 import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "./auth-check.js";
 import {
@@ -329,8 +329,16 @@ export async function testEnvironment(
         return asStringArray(config.args);
       })();
 
-      let effectiveEffort = effort;
-      if (targetIsSandbox && effort) {
+      let effectiveEffort = resolveClaudeReasoningEffort(model, effort);
+      if (effort && !effectiveEffort) {
+        checks.push({
+          code: "claude_effort_unsupported_for_model",
+          level: "warn",
+          message: `Model ${model || "(provider default)"} does not accept reasoning effort "${effort}"; the probe omitted it.`,
+          hint: "Clear the configured effort, or pick a model that exposes reasoning-effort tiers.",
+        });
+      }
+      if (targetIsSandbox && effectiveEffort) {
         const supportsEffort = await claudeCommandSupportsEffortFlag({
           runId,
           command,

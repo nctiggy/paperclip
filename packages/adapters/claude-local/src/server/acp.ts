@@ -56,7 +56,7 @@ import { buildLocalAdapterTestProbeEnv } from "./probe-env.js";
 import { detectClaudeLoginRequired, extractClaudeRetryNotBefore, isClaudeProviderQuotaError, parseClaudeStreamJson } from "./parse.js";
 import { buildClaudeProbePermissionArgs, claudeSandboxPermissionEnv } from "./permissions.js";
 import { ADAPTER_AUTH_MISSING_CHECK_CODE } from "./auth-check.js";
-import { resolveClaudeModel, SANDBOX_INSTALL_COMMAND } from "../index.js";
+import { resolveClaudeModel, resolveClaudeReasoningEffort, SANDBOX_INSTALL_COMMAND } from "../index.js";
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
 const packageRootDir = path.resolve(moduleDir, "../..");
@@ -121,12 +121,23 @@ function firstNonEmptyString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
+/** Every key the shared ACPX engine reads when it resolves a thinking effort. */
+const ACP_EFFORT_KEYS = ["modelReasoningEffort", "reasoningEffort", "thinkingEffort", "effort"] as const;
+
 export function buildClaudeAcpConfig(
   config: Record<string, unknown>,
   inheritedEnv: Record<string, unknown> = {},
 ): Record<string, unknown> {
   const env = parseObject(config.env);
   const model = resolveClaudeModel(config.model, { ...inheritedEnv, ...env });
+  // The ACP server validates the effort session-config option against the
+  // model, so an effort the model does not accept (Haiku accepts none) fails
+  // the run outright. Resolve the aliases the engine reads into one supported
+  // value here, and drop it entirely when the model has no effort tier.
+  const requestedEffort = firstNonEmptyString(...ACP_EFFORT_KEYS.map((key) => config[key])) ?? "";
+  const effort = resolveClaudeReasoningEffort(model, requestedEffort);
+  const withoutEffortAliases = { ...config };
+  for (const key of ACP_EFFORT_KEYS) delete withoutEffortAliases[key];
   const agentCommand = firstNonEmptyString(config.agentCommand, config.acpAgentCommand);
   const stateDir = firstNonEmptyString(config.stateDir, config.acpStateDir);
   const mode = firstNonEmptyString(config.mode, config.acpMode) ?? DEFAULT_ACP_ENGINE_MODE;
@@ -142,8 +153,9 @@ export function buildClaudeAcpConfig(
     DEFAULT_ACP_ENGINE_WARM_HANDLE_IDLE_MS;
 
   return {
-    ...config,
+    ...withoutEffortAliases,
     model,
+    ...(effort ? { effort } : {}),
     // ACP reads ANTHROPIC_MODEL at startup; keep it aligned with CLI precedence.
     ...(model ? { env: { ...env, ANTHROPIC_MODEL: model } } : {}),
     agent: "claude",
